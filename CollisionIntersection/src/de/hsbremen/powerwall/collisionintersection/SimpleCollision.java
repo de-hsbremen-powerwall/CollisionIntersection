@@ -93,7 +93,6 @@ public class SimpleCollision extends SimpleApplication implements PhysicsCollisi
 	                    RigidBodyControl bulletControl = new RigidBodyControl(100);
 	                    boxGeometry.addControl(bulletControl);
 	                    bulletControl.setLinearVelocity(app.getCamera().getDirection().mult(10));
-	                    boxGeometry.addControl(bulletControl);
 	                    rootNode.attachChild(boxGeometry);
 	                    space.add(bulletControl);
 	                    boxCount++;
