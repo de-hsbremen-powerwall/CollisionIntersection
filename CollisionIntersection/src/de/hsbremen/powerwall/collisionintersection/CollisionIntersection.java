@@ -10,6 +10,7 @@ import com.jme3.bullet.collision.PhysicsCollisionEvent;
 import com.jme3.bullet.collision.PhysicsCollisionListener;
 import com.jme3.bullet.collision.PhysicsCollisionObject;
 import com.jme3.bullet.collision.shapes.GImpactCollisionShape;
+import com.jme3.bullet.collision.shapes.MeshCollisionShape;
 import com.jme3.bullet.control.RigidBodyControl;
 import com.jme3.font.BitmapText;
 import com.jme3.light.DirectionalLight;
@@ -27,12 +28,15 @@ public class CollisionIntersection extends SimpleApplication implements PhysicsC
 	private Geometry 			sphere;
 	private Node				teapotNode;
 	private Node				sphereNode;
+	private RigidBodyControl 	rigidSphere;
+	private RigidBodyControl 	rigidTeapot;
 	
 	private void loadObjects() {
 		
 		bulletAppState = new BulletAppState();
 		stateManager.attach(bulletAppState);
 		bulletAppState.getPhysicsSpace().enableDebug(assetManager);
+		
 		
 		//create a teapot
 		//load a material for the teapot and assign it		
@@ -50,7 +54,8 @@ public class CollisionIntersection extends SimpleApplication implements PhysicsC
 		sphere = new Geometry("Sphere", s);
 		sphere.setMaterial(new Material(assetManager, "Common/MatDefs/Misc/ShowNormals.j3md"));
 		//sphere.setLocalTranslation(2f, 1f, 2f);
-		sphere.setLocalTranslation(0f, 0.3f, 0.8f);
+		//sphere.setLocalTranslation(0f, 0.3f, 0.8f);
+		sphere.setLocalTranslation(0f, 2.0f, 0.0f);
 		rootNode.attachChild(sphere);
 
 
@@ -69,10 +74,12 @@ public class CollisionIntersection extends SimpleApplication implements PhysicsC
 		//GImpactCollisionShape collisionShape = new GImpactCollisionShape(sphereGeom.getMesh());
 		//GImpactCollisionShape collisionShape = new GImpactCollisionShape(sphereGeom.getMesh());
 			
-		RigidBodyControl rigidSphere = new RigidBodyControl(new GImpactCollisionShape(sphereGeom.getMesh()), 0f);
+		//rigidSphere = new RigidBodyControl(new MeshCollisionShape(sphereGeom.getMesh()), 1f);
+		rigidSphere = new RigidBodyControl(new GImpactCollisionShape(sphereGeom.getMesh()), 1f);
 		sphere.addControl(rigidSphere);
 		
-		RigidBodyControl rigidTeapot = new RigidBodyControl(new GImpactCollisionShape(teapotGeom.getMesh()), 0f);
+		//rigidTeapot = new RigidBodyControl(new MeshCollisionShape(teapotGeom.getMesh()), 00f);
+		rigidTeapot = new RigidBodyControl(new GImpactCollisionShape(teapotGeom.getMesh()), 0f);
 		teapot.addControl(rigidTeapot);
 		
 		teapotNode = new Node("teapotNode");
@@ -80,15 +87,17 @@ public class CollisionIntersection extends SimpleApplication implements PhysicsC
 		teapotNode.attachChild(teapotGeom);
 		sphereNode.attachChild(sphereGeom);
 		
-		rootNode.attachChild(teapotNode);
+		rootNode.attachChild(sphere);
 		rootNode.attachChild(sphereNode);
 		
 		bulletAppState.getPhysicsSpace().add(rigidTeapot);
 		bulletAppState.getPhysicsSpace().add(rigidSphere);	
 		bulletAppState.getPhysicsSpace().setAccuracy(0.005f);
+		
+		bulletAppState.getPhysicsSpace().addCollisionListener(this);
 	}
 
-	 public void collision(PhysicsCollisionEvent event) {
+	public void collision(PhysicsCollisionEvent event) {
 		 /*
 	        if ("box".equals(event.getNodeA().getName()) || "box".equals(event.getNodeB().getName())) {
 	            if ("bullet".equals(event.getNodeA().getName()) || "bullet".equals(event.getNodeB().getName())) {
@@ -102,9 +111,9 @@ public class CollisionIntersection extends SimpleApplication implements PhysicsC
 	        }
 	        */
 		 System.out.println("Collision!");
-	    }
+	 }
 
-	    public boolean collide(PhysicsCollisionObject nodeA, PhysicsCollisionObject nodeB) {
+	public boolean collide(PhysicsCollisionObject nodeA, PhysicsCollisionObject nodeB) {
 	        //group 2 only randomly collides
 	        /*
 	    	if (Math.random() < 0.5f) {
@@ -113,9 +122,10 @@ public class CollisionIntersection extends SimpleApplication implements PhysicsC
 	            return false;
 	        }
 	        */
-	    	System.out.println("Test collision!");
-	    	return false;
-	    }
+	    
+		System.out.println("Test collision!");
+	    return false;
+	}
 	    
 	
 	private void initCrossHair() {
@@ -146,8 +156,11 @@ public class CollisionIntersection extends SimpleApplication implements PhysicsC
 	@Override
 	public void simpleUpdate(float tpf) {
 		//rotate the teapot
-		teapotNode.rotate(0f, 0.02f, 0f);
-		
+		//teapotNode.rotate(0f, 0.02f, 0f);
+		/*
+		teapot.rotate(0f, 0.02f, 0f);
+		rigidTeapot.setPhysicsRotation(teapot.getWorldRotation());
+		*/
 		/*
 		teapotNode.updateModelBound();
 		teapotNode.updateGeometricState();
