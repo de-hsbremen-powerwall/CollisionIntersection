@@ -1,9 +1,18 @@
+import java.util.Collection;
+
+import com.jme3.app.Application;
 import com.jme3.app.SimpleApplication;
 import com.jme3.bullet.BulletAppState;
 import com.jme3.bullet.PhysicsSpace;
 import com.jme3.bullet.collision.PhysicsCollisionEvent;
 import com.jme3.bullet.collision.PhysicsCollisionListener;
 import com.jme3.bullet.control.RigidBodyControl;
+import com.jme3.bullet.objects.PhysicsRigidBody;
+import com.jme3.input.KeyInput;
+import com.jme3.input.MouseInput;
+import com.jme3.input.controls.ActionListener;
+import com.jme3.input.controls.KeyTrigger;
+import com.jme3.input.controls.MouseButtonTrigger;
 import com.jme3.light.AmbientLight;
 import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
@@ -11,22 +20,26 @@ import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Geometry;
+import com.jme3.scene.Node;
 import com.jme3.scene.shape.Box;
+import com.jme3.scene.shape.Sphere;
+import com.jme3.scene.shape.Sphere.TextureMode;
 import com.jme3.system.AppSettings;
 
 
 public class Jenga extends SimpleApplication implements PhysicsCollisionListener {
 
-  public static final float BLOCK_HEIGHT = 0.1f; 
+	public static final float BLOCK_HEIGHT = 0.1f; 
 	public static final float BLOCK_WIDTH = 0.25f;
 	public static final float BLOCK_LENGTH = 0.75f;
 
 	private float mHeight = 0.0f;
 	private BulletAppState physicsSpace;
 	private PhysicsSpace space;
+	private Geometry floorGeometry;
 
 	private void increaseHeight() {
-		mHeight += BLOCK_HEIGHT + 0.001f;
+		mHeight += BLOCK_HEIGHT + 0.002f;
 	}
 
 	private Geometry createBlock(Vector3f location, int angle) {
@@ -34,39 +47,43 @@ public class Jenga extends SimpleApplication implements PhysicsCollisionListener
 		Box box = new Box(BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_LENGTH);
 		Geometry boxGeometry = new Geometry("Box", box);
 		boxGeometry.setMaterial(boxMaterial);
-		
+
 		RigidBodyControl bulletControl = new RigidBodyControl(0f);
+
 
 		Quaternion rotation = new Quaternion();
 		rotation.fromAngles(0f, angle * FastMath.DEG_TO_RAD, 0f);
-		
+
 		boxGeometry.addControl(bulletControl);
+		bulletControl.setDamping(0.8f, 0f);
+		bulletControl.setFriction(0.3f);
 		bulletControl.setMass(1f);
+		bulletControl.activate();
 		rootNode.attachChild(boxGeometry);
 		getPhysicsSpace().add(bulletControl);
 
 		bulletControl.setPhysicsLocation(location);
 		bulletControl.setPhysicsRotation(rotation);
-		
+
 		return boxGeometry;
 	}
 
 	private void createRow(boolean odd) {
 		if(odd) {
-			createBlock(new Vector3f(-2.1f * BLOCK_WIDTH, mHeight, 0), 0);
+			createBlock(new Vector3f(-1.5f * BLOCK_WIDTH, mHeight, 0), 0);
 			createBlock(new Vector3f(0, mHeight, 0), 0);
-			createBlock(new Vector3f(+2.1f * BLOCK_WIDTH, mHeight, 0), 0);
+			createBlock(new Vector3f(+1.5f * BLOCK_WIDTH, mHeight, 0), 0);
 		} else {
-			createBlock(new Vector3f(0, mHeight, -2.1f * BLOCK_WIDTH), 90);
+			createBlock(new Vector3f(0, mHeight, -1.5f * BLOCK_WIDTH), 90);
 			createBlock(new Vector3f(0, mHeight,0), 90);
-			createBlock(new Vector3f(0, mHeight, +2.1f * BLOCK_WIDTH), 90);
+			createBlock(new Vector3f(0, mHeight, 1.5f * BLOCK_WIDTH), 90);
 		}
 		increaseHeight();
 	}
 
 	private void buildTower() {
 		//20 Reihen x 3 Blöcke
-		for(int i = 0; i<=1000; i++) {
+		for(int i = 0; i<=20; i++) {
 			if(i%2==0) {
 				//gerade
 				createRow(false);
@@ -97,9 +114,10 @@ public class Jenga extends SimpleApplication implements PhysicsCollisionListener
 		stateManager.attach(physicsSpace);
 
 		getPhysicsSpace().enableDebug(assetManager);
-		
+		getPhysicsSpace().setAccuracy(1f/60f);
+
 		getCamera().setLocation(new Vector3f(0, 2, 10));
-		
+
 		AmbientLight light = new AmbientLight();
 		light.setColor(ColorRGBA.LightGray);
 		rootNode.addLight(light);
@@ -107,19 +125,59 @@ public class Jenga extends SimpleApplication implements PhysicsCollisionListener
 		Material material = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
 		material.setColor("Color", ColorRGBA.DarkGray);
 
-		Box floorBox = new Box(140, 0.25f, 140);
-		Geometry floorGeometry = new Geometry("Boden", floorBox);
+		Box floorBox = new Box(140, 0.1f, 140);
+		floorGeometry = new Geometry("Boden", floorBox);
 		floorGeometry.setMaterial(material);
-		floorGeometry.setLocalTranslation(0, -0.001f, 0);
+		floorGeometry.setLocalTranslation(0, -0.1f, 0);
 		floorGeometry.addControl(new RigidBodyControl(0));
 
 		rootNode.attachChild(floorGeometry);
 		physicsSpace.getPhysicsSpace().add(floorGeometry);
 
 		getPhysicsSpace().addCollisionListener(this);
-
+		addControls(this, rootNode, space);
 		buildTower();
 	}
+
+	public void addControls(final Application app, final Node rootNode, final PhysicsSpace space) {
+		ActionListener actionListener = new ActionListener() {
+			@Override
+			public void onAction(String name, boolean isPressed, float tpf) {
+				if(name.equals("activatePhysics")) {
+					Collection<PhysicsRigidBody> bodies = getPhysicsSpace().getRigidBodyList();
+					for (PhysicsRigidBody physicsRigidBody : bodies) {
+						physicsRigidBody.setMass(1f);
+						physicsRigidBody.activate();
+					}
+					floorGeometry.getControl(RigidBodyControl.class).setMass(0f);
+					System.out.println("physics");
+				}
+				
+				if (name.equals("shootSphere") && !isPressed) {
+					Sphere sphere = new Sphere(32, 32, 0.4f, true, false);
+					sphere.setTextureMode(TextureMode.Projected);
+					Material sphereMaterial = new Material(app.getAssetManager(), "Common/MatDefs/Misc/Unshaded.j3md");
+                    Geometry sphereGeometry = new Geometry("Kugel", sphere);
+                    sphereGeometry.setMaterial(sphereMaterial);
+                    sphereGeometry.setLocalTranslation(app.getCamera().getLocation());
+                    RigidBodyControl bulletControl = new RigidBodyControl(1f);
+                    sphereGeometry.addControl(bulletControl);
+                    bulletControl.setLinearVelocity(app.getCamera().getDirection().mult(25));
+                    sphereGeometry.addControl(bulletControl);
+                    rootNode.attachChild(sphereGeometry);
+                    getPhysicsSpace().add(bulletControl);
+                    System.out.println("kugel");
+				}
+			}
+		};
+
+		app.getInputManager().addMapping("activatePhysics", new KeyTrigger(KeyInput.KEY_SPACE));
+		app.getInputManager().addListener(actionListener, "activatePhysics");
+		
+		app.getInputManager().addMapping("shootSphere", new MouseButtonTrigger(MouseInput.BUTTON_LEFT));
+        app.getInputManager().addListener(actionListener, "shootSphere");
+	}
+
 
 	private PhysicsSpace getPhysicsSpace(){
 		if(physicsSpace == null) {
